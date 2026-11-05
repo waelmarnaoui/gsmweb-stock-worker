@@ -11,6 +11,9 @@ export async function signIn(context,username,password){
  const {securityCheckpoint}=await import('./browser.mjs');
  let state=await page.evaluate(()=>({title:document.title,text:document.body.innerText}));
  if(securityCheckpoint(state.title,state.text))throw Error('Supplier security verification requires approved access; cloud run stopped.');
+ await page.waitForLoadState('networkidle',{timeout:20000});
+ state=await page.evaluate(()=>({title:document.title,text:document.body.innerText}));
+ if(securityCheckpoint(state.title,state.text))throw Error('Supplier security verification requires approved access; cloud run stopped.');
  let passwordField=page.locator('input[type="password"]:visible');
  if(!await passwordField.count()){
   const signInLink=page.locator('a[href*="login"]:visible');
