@@ -25,7 +25,8 @@ export async function signIn(context,username,password){
  const form=page.locator('form').filter({has:page.locator('input[type="password"]:visible')});
  const account=form.locator('input[type="email"]:visible, input[name="username"]:visible, input[name="email"]:visible, input[type="text"]:visible').first();
  await account.fill(username);await passwordField.first().fill(password);
- await form.getByRole('button',{name:'Login',exact:true}).click();
+ // Koff renders its submit button outside the login <form>.
+ await page.getByRole('button',{name:'Login',exact:true}).click();
  console.log(JSON.stringify({source:'cloud',stage:'supplier_login_submitted'}));
  await page.waitForLoadState('domcontentloaded');
  await page.locator('a[href*="/cp"]:visible,button:has-text("Logout"),button:has-text("Deconectare")').first().waitFor({state:'visible',timeout:30000}).catch(async()=>{
