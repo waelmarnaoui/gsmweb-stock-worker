@@ -21,12 +21,18 @@ export async function signIn(context,username,password){
   passwordField=page.locator('input[type="password"]:visible');
  }
  await passwordField.first().waitFor({state:'visible',timeout:15000});
+ console.log(JSON.stringify({source:'cloud',stage:'supplier_login_form'}));
  const form=page.locator('form').filter({has:page.locator('input[type="password"]:visible')});
  const account=form.locator('input[type="email"]:visible, input[name="username"]:visible, input[name="email"]:visible, input[type="text"]:visible').first();
  await account.fill(username);await passwordField.first().fill(password);
  await form.getByRole('button',{name:'Login',exact:true}).click();
+ console.log(JSON.stringify({source:'cloud',stage:'supplier_login_submitted'}));
  await page.waitForLoadState('domcontentloaded');
- await page.locator('a[href*="/cp"]:visible,button:has-text("Logout"),button:has-text("Deconectare")').first().waitFor({state:'visible',timeout:30000}).catch(()=>{throw Error('Koff login did not complete. Check the saved login privately; verification challenges need supplier-approved access.');});
+ await page.locator('a[href*="/cp"]:visible,button:has-text("Logout"),button:has-text("Deconectare")').first().waitFor({state:'visible',timeout:30000}).catch(async()=>{
+  const result=await page.evaluate(()=>{const text=document.body.innerText;return {path:location.pathname,passwordFormPresent:!!document.querySelector('input[type="password"]'),credentialRejected:/invalid credentials|incorrect password|wrong password|parol[aă] (?:incorect|gre[sș]it)|date (?:incorecte|invalide)|email.*(?:incorect|invalid)|autentificare e[sș]uat[aă]/i.test(text),extraVerification:/verification code|two.factor|one.time|cod de verificare|autentificare [îi]n doi|verific[aă].*(?:email|identitat)/i.test(text),supplierSecurityCheck:/captcha|verify you are human|performing security verification|verifies you are not a bot/i.test(text)};});
+  console.log(JSON.stringify({source:'cloud',stage:'supplier_login_not_completed',...result}));
+  throw Error('Koff login did not complete. Check the saved login privately; verification challenges need supplier-approved access.');
+ });
  await requireLogin(page);
 }
 
