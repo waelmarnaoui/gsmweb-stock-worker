@@ -4,6 +4,12 @@ import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {workerApi} from './api.mjs';
 
+export async function runStockScan(api,load=()=>import('./stock.mjs')){
+ const stock=await load();await stock.stockSync(api);
+ // The module replaces its state object as batches complete. Read it after the scan.
+ return stock.stockState;
+}
+
 export async function signIn(context,username,password){
  const {requireLogin}=await import('./browser.mjs'),page=context.pages()[0]||await context.newPage();
  await page.goto('https://shop.koff.ro/ro',{waitUntil:'domcontentloaded',timeout:30000});
@@ -47,7 +53,7 @@ export async function run(){
  let context;
  try{
   const {browser}=await import('./browser.mjs');context=await browser(false);await signIn(context,username,password);console.log(JSON.stringify({source:'cloud',supplierAuthenticated:true}));await context.close();context=undefined;
-  const {stockSync,stockState}=await import('./stock.mjs');await stockSync(api);
+  const stockState=await runStockScan(api);
   console.log(JSON.stringify({status:stockState.status,total:stockState.total,checked:stockState.checked,verified:stockState.verified,outOfStock:stockState.outOfStock,failed:stockState.failed,at:stockState.at}));
   if(stockState.status!=='complete')process.exitCode=1;
  }catch(e){await api('/worker/stock-progress',{status:'paused',message:'Agentul cloud s-a oprit. Verifică autentificarea Koff și ultimul raport.'}).catch(()=>{});throw e;}finally{if(context)await context.close();try{for(let batch=0;batch<200;batch++){const result=await api('/worker/merchant-sync',{});if(result.busy||result.skipped||result.failed||!result.pending)break;}}catch{console.error('Google Merchant availability sync needs attention.');process.exitCode=1;}await rm(privateDir,{recursive:true,force:true});}
