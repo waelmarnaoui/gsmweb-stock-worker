@@ -1,0 +1,13 @@
+GsmWeb cloud stock runner
+
+Hosting: dedicated public GitHub repository; the private shop repository remains private.
+Schedule: hourly, minute 17. GitHub schedules can be delayed.
+Required Actions secrets: GSMWEB_ADMIN_URL, CLOUD_STOCK_TOKEN, VERCEL_BYPASS_SECRET, KOFF_USERNAME, KOFF_PASSWORD.
+The matching CLOUD_STOCK_TOKEN belongs only in the admin Production environment.
+The Koff password must be entered privately by the owner. Never commit credentials, browser profiles, cookies or downloaded supplier/customer data.
+The workflow uses a normal Chrome browser and stops on supplier security verification; it does not solve CAPTCHAs or bypass access restrictions.
+Each run checks existing SKUs only, preserves Romanian product copy and URLs, applies the existing price/margin safeguards, then updates Merchant Center.
+The two-hour stock expiry remains active.
+No real cloud scan has been verified yet. Activation requires approval for the dedicated repository and cloud credentials, then a successful full hosted scan before the local schedule is disabled.
+
+Validation: node --test tests/api.test.mjs

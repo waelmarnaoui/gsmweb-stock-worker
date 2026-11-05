@@ -1,0 +1,33 @@
+name: GsmWeb hourly stock check
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+permissions:
+  contents: read
+concurrency:
+  group: supplier-stock
+  cancel-in-progress: false
+jobs:
+  stock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Verify runner
+        run: npm test
+      - name: Check Koff stock and update Google Merchant Center
+        run: xvfb-run --auto-servernum node cloud-run.mjs
+        env:
+          GSMWEB_ADMIN_URL: ${{ secrets.GSMWEB_ADMIN_URL }}
+          CLOUD_STOCK_TOKEN: ${{ secrets.CLOUD_STOCK_TOKEN }}
+          VERCEL_BYPASS_SECRET: ${{ secrets.VERCEL_BYPASS_SECRET }}
+          KOFF_USERNAME: ${{ secrets.KOFF_USERNAME }}
+          KOFF_PASSWORD: ${{ secrets.KOFF_PASSWORD }}
