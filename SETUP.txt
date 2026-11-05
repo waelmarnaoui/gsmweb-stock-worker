@@ -1,13 +1,17 @@
 GsmWeb cloud stock runner
 
-Hosting: dedicated public GitHub repository; the private shop repository remains private.
-Schedule: hourly, minute 17. GitHub schedules can be delayed.
-Required Actions secrets: GSMWEB_ADMIN_URL, CLOUD_STOCK_TOKEN, VERCEL_BYPASS_SECRET, KOFF_USERNAME, KOFF_PASSWORD.
-The matching CLOUD_STOCK_TOKEN belongs only in the admin Production environment.
-The Koff password must be entered privately by the owner. Never commit credentials, browser profiles, cookies or downloaded supplier/customer data.
-The workflow uses a normal Chrome browser and stops on supplier security verification; it does not solve CAPTCHAs or bypass access restrictions.
-Each run checks existing SKUs only, preserves Romanian product copy and URLs, applies the existing price/margin safeguards, then updates Merchant Center.
-The two-hour stock expiry remains active.
-No real cloud scan has been verified yet. Activation requires approval for the dedicated repository and cloud credentials, then a successful full hosted scan before the local schedule is disabled.
+Repository: https://github.com/waelmarnaoui/gsmweb-stock-worker
+Run history: https://github.com/waelmarnaoui/gsmweb-stock-worker/actions
+Schedule: hourly at minute 17, on the default main branch. GitHub can delay starts.
 
-Validation: node --test tests/api.test.mjs
+The Koff login and dedicated connection keys are saved in encrypted GitHub Actions secrets. The matching stock key is configured only on the admin Production server. No shop source, customer records, credentials or browser profiles are published.
+
+The first complete hosted pass verified all 1,007 products with zero stock failures. Merchant sync finished with zero pending updates and zero failures. A completion-reporting bug was fixed. The independent confirmation run continues at https://github.com/waelmarnaoui/gsmweb-stock-worker/actions/runs/42065268606 . The old local n8n stock timer is unpublished and its worker is stopped.
+
+Each run checks existing SKUs, preserves Romanian names and product URLs, applies existing price safeguards, then updates Merchant Center. New product discovery and bulk import are separate tasks.
+
+Supplier login or security challenges pause the scan. No CAPTCHA or access restriction is bypassed. The shop stops sales of products whose stock has not been verified for two hours.
+
+Update KOFF_USERNAME and KOFF_PASSWORD privately in repository secrets if the supplier login changes. For a manual full run, open Actions > GsmWeb hourly stock check > Run workflow, and untick the credential-free probe option.
+
+GitHub may disable public scheduled workflows after 60 days without repository activity; re-enable the workflow if that happens. Source: https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
