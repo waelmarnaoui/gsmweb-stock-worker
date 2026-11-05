@@ -1,6 +1,11 @@
 name: GsmWeb hourly stock check
 on:
   workflow_dispatch:
+    inputs:
+      probe:
+        description: Check hosted browser access without using credentials
+        type: boolean
+        default: true
   schedule:
     - cron: '17 * * * *'
 permissions:
@@ -24,6 +29,7 @@ jobs:
       - name: Verify runner
         run: npm test
       - name: Check Koff stock and update Google Merchant Center
+        if: github.event_name == 'schedule' || inputs.probe == false
         run: xvfb-run --auto-servernum node cloud-run.mjs
         env:
           GSMWEB_ADMIN_URL: ${{ secrets.GSMWEB_ADMIN_URL }}
@@ -31,3 +37,6 @@ jobs:
           VERCEL_BYPASS_SECRET: ${{ secrets.VERCEL_BYPASS_SECRET }}
           KOFF_USERNAME: ${{ secrets.KOFF_USERNAME }}
           KOFF_PASSWORD: ${{ secrets.KOFF_PASSWORD }}
+      - name: Check supplier access without credentials
+        if: github.event_name == 'workflow_dispatch' && inputs.probe == true
+        run: xvfb-run --auto-servernum node preflight.mjs
