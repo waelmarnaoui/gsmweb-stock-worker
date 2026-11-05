@@ -39,7 +39,7 @@ export async function run(){
  const api=(path,data)=>workerApi(base,headers,path,data);
  let context;
  try{
-  const {browser}=await import('./browser.mjs');context=await browser(false);await signIn(context,username,password);await context.close();context=undefined;
+  const {browser}=await import('./browser.mjs');context=await browser(false);await signIn(context,username,password);console.log(JSON.stringify({source:'cloud',supplierAuthenticated:true}));await context.close();context=undefined;
   const {stockSync,stockState}=await import('./stock.mjs');await stockSync(api);
   console.log(JSON.stringify({status:stockState.status,total:stockState.total,checked:stockState.checked,verified:stockState.verified,outOfStock:stockState.outOfStock,failed:stockState.failed,at:stockState.at}));
   if(stockState.status!=='complete')process.exitCode=1;
