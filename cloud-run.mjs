@@ -3,6 +3,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {workerApi} from './api.mjs';
+import {scanIsFresh,drainMerchant} from './freshness.mjs';
 
 export async function runStockScan(api,load=()=>import('./stock.mjs')){
  const stock=await load();await stock.stockSync(api);
@@ -50,13 +51,18 @@ export async function run(){
  Object.assign(process.env,{KOFF_PROFILE:join(privateDir,'browser'),STOCK_STATE_FILE:join(privateDir,'progress.json'),KOFF_HEADLESS:'false'});
  const headers={Authorization:`Bearer ${token}`,'Content-Type':'application/json',...(process.env.VERCEL_BYPASS_SECRET?{'x-vercel-protection-bypass':process.env.VERCEL_BYPASS_SECRET}:{})};
  const api=(path,data)=>workerApi(base,headers,path,data);
+ const plan=await api('/worker/stock-plan');
+ if(!plan.enabled){console.log(JSON.stringify({source:'cloud',status:'disabled'}));await rm(privateDir,{recursive:true,force:true});return;}
+ if(scanIsFresh(plan.stockSync)){const sync=await drainMerchant(api);console.log(JSON.stringify({source:'cloud',status:'fresh',lastComplete:plan.stockSync.at,merchantComplete:sync.ok}));if(!sync.ok)process.exitCode=1;await rm(privateDir,{recursive:true,force:true});return;}
  let context;
  try{
   const {browser}=await import('./browser.mjs');context=await browser(false);await signIn(context,username,password);console.log(JSON.stringify({source:'cloud',supplierAuthenticated:true}));await context.close();context=undefined;
   const stockState=await runStockScan(api);
   console.log(JSON.stringify({status:stockState.status,total:stockState.total,checked:stockState.checked,verified:stockState.verified,outOfStock:stockState.outOfStock,failed:stockState.failed,at:stockState.at}));
   if(stockState.status!=='complete')process.exitCode=1;
- }catch(e){await api('/worker/stock-progress',{status:'paused',message:'Agentul cloud s-a oprit. Verifică autentificarea Koff și ultimul raport.'}).catch(()=>{});throw e;}finally{if(context)await context.close();try{for(let batch=0;batch<200;batch++){const result=await api('/worker/merchant-sync',{});if(result.busy||result.skipped||result.failed||!result.pending)break;}}catch{console.error('Google Merchant availability sync needs attention.');process.exitCode=1;}await rm(privateDir,{recursive:true,force:true});}
+ }catch(e){await api('/worker/stock-progress',{status:'paused',message:'Agentul cloud s-a oprit. Verifică autentificarea Koff și ultimul raport.'}).catch(()=>{});throw e;}finally{if(context)await context.close();try{const sync=await drainMerchant(api);console.log(JSON.stringify({source:'cloud',merchantComplete:sync.ok,...sync}));if(!sync.ok)process.exitCode=1;}catch{console.error('Google Merchant availability sync needs attention.');process.exitCode=1;}await rm(privateDir,{recursive:true,force:true});}
 }
 
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)run().catch(e=>{console.error(JSON.stringify({source:'cloud',failureType:e.name==='TimeoutError'?'TimeoutError':'Error',operation:String(e.message).match(/^(?:page|locator)\.[A-Za-z]+/)?.[0]||'stock-run',reason:/Koff session expired/.test(e.message)?'SUPPLIER_LOGIN_NOT_FINISHED':/security verification/.test(e.message)?'SUPPLIER_SECURITY_CHECK':/Koff login did not complete/.test(e.message)?'SUPPLIER_LOGIN_NOT_COMPLETED':e.httpStatus?'STOCK_SERVER_'+e.httpStatus:'RUN_STOPPED'}));console.error('Cloud stock check stopped. Inspect the private admin stock status and connection settings. No credentials or browser data are logged.');process.exitCode=1;});
+
+
